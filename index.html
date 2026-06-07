@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <link rel="manifest" href="manifest.json">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Web Bot Keuangan</title>
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <meta name="apple-mobile-web-app-title" content="FinBot">
+    
+    <script>
+        // Mendaftarkan 'Service Worker' agar web bisa berjalan sebagai aplikasi offline
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('sw.js').then(() => {
+                console.log('Aplikasi siap di-install!');
+            });
+        }
+    </script>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; margin: 0; padding: 20px; background-color: #f0f2f5; }
+        .container { max-width: 600px; margin: auto; background: white; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); overflow: hidden; display: flex; flex-direction: column; height: 90vh; }
+        .chat-header { background: #25d366; color: white; padding: 15px; font-size: 18px; font-weight: bold; text-align: center; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
+        .chat-box { flex: 1; padding: 15px; overflow-y: auto; background: #e5ddd5; display: flex; flex-direction: column; gap: 10px; }
+        .message { max-width: 75%; padding: 10px 14px; border-radius: 8px; font-size: 14px; line-height: 1.4; }
+        .bot { background: white; align-self: flex-start; border-top-left-radius: 0; box-shadow: 0 1px 1px rgba(0,0,0,0.1); }
+        .user { background: #dcf8c6; align-self: flex-end; border-top-right-radius: 0; box-shadow: 0 1px 1px rgba(0,0,0,0.1); }
+        .input-area { display: flex; padding: 10px; background: #f0f0f0; border-top: 1px solid #ddd; }
+        .input-area input { flex: 1; padding: 12px; border: 1px solid #ccc; border-radius: 20px; outline: none; font-size: 14px; }
+        .input-area button { background: #25d366; color: white; border: none; padding: 0 20px; margin-left: 8px; border-radius: 20px; font-weight: bold; cursor: pointer; }
+        .input-area button:hover { background: #20ba5a; }
+        .financial-summary { display: grid; grid-template-columns: 1px 1px 1px; background: #fff; padding: 10px; border-bottom: 1px solid #ddd; font-size: 12px; font-weight: bold; text-align: center; gap: 5px; }
+        .box { padding: 8px; border-radius: 6px; color: white; }
+        .bg-masuk { background: #28a745; } .bg-keluar { background: #dc3545; } .bg-tabung { background: #007bff; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div class="chat-header">🤖 FinBot - Asisten Keuanganmu</div>
+    
+    <div style="display: flex; justify-content: space-around; background: #fff; padding: 10px; border-bottom: 1px solid #ddd; text-align: center; font-size: 13px;">
+        <div class="box bg-masuk">Pemasukan:<br><span id="total-masuk">Rp 0</span></div>
+        <div class="box bg-keluar">Pengeluaran:<br><span id="total-keluar">Rp 0</span></div>
+        <div class="box bg-tabung">Tabungan:<br><span id="total-tabungan">Rp 0</span></div>
+    </div>
+
+    <div class="chat-box" id="chatBox">
+        <div class="message bot">
+            Halo! Saya <b>FinBot</b>. Sila ketik perintah berikut untuk mencatat keuanganmu:<br><br>
+            ➕ <b>masuk [jumlah]</b> -> Catat pemasukan<br>
+            ➖ <b>keluar [jumlah]</b> -> Catat pengeluaran<br>
+            💰 <b>tabung [jumlah]</b> -> Catat tabungan<br><br>
+            <i>Contoh: masuk 50000</i>
+        </div>
+    </div>
+
+    <div class="input-area">
+        <input type="text" id="userInput" placeholder="Ketik perintah di sini... (misal: masuk 100000)" onkeypress="handleKeyPress(event)">
+        <button onclick="kirimPesan()">Kirim</button>
+    </div>
+</div>
+
+<script>
+    // Variabel penyimpan saldo angka asli
+    let pemasukan = 0;
+    let pengeluaran = 0;
+    let tabungan = 0;
+
+    function handleKeyPress(e) {
+        if (e.key === 'Enter') kirimPesan();
+    }
+
+    function formatRupiah(angka) {
+        return "Rp " + angka.toLocaleString('id-ID');
+    }
+
+    function kirimPesan() {
+        let inputEl = document.getElementById("userInput");
+        let teks = inputEl.value.trim().toLowerCase();
+        if (teks === "") return;
+
+        // 1. Tampilkan pesan user ke layar chat
+        tampilkanChat(inputEl.value, 'user');
+        inputEl.value = ""; // bersihkan kolom text
+
+        // 2. Proses perintah logika bot
+        let pisahKata = teks.split(" ");
+        let perintah = pisahKata[0];
+        let nominal = parseInt(pisahKata[1]);
+
+        let balasanBot = "";
+
+        if (isNaN(nominal) || nominal <= 0) {
+            balasanBot = "❌ Format salah. Mohon ketik perintah diikuti angka nominalnya saja.\nContoh: <b>keluar 25000</b>";
+        } else {
+            if (perintah === "masuk") {
+                pemasukan += nominal;
+                balasanBot = `✅ Berhasil mencatat pemasukan sebesar <b>${formatRupiah(nominal)}</b>.`;
+            } else if (perintah === "keluar") {
+                pengeluaran += nominal;
+                balasanBot = `✅ Berhasil mencatat pengeluaran sebesar <b>${formatRupiah(nominal)}</b>. Tetap hemat ya!`;
+            } else if (perintah === "tabung") {
+                tabungan += nominal;
+                balasanBot = `🎉 Mantap! Berhasil menambah tabungan sebesar <b>${formatRupiah(nominal)}</b>.`;
+            } else {
+                balasanBot = "🤔 Perintah tidak dikenal. Gunakan kata depan: <b>masuk</b>, <b>keluar</b>, atau <b>tabung</b>.";
+            }
+        }
+
+        // 3. Tampilkan balasan bot dengan sedikit delay biar terasa nyata
+        setTimeout(() => {
+            tampilkanChat(balasanBot, 'bot');
+            updateDashboard();
+        }, 500);
+    }
+
+    function tampilkanChat(pesan, pengirim) {
+        let chatBox = document.getElementById("chatBox");
+        let div = document.createElement("div");
+        div.className = `message ${pengirim}`;
+        div.innerHTML = pesan;
+        chatBox.appendChild(div);
+        chatBox.scrollTop = chatBox.scrollHeight; // Auto scroll ke bawah
+    }
+
+    function updateDashboard() {
+        document.getElementById("total-masuk").innerText = formatRupiah(pemasukan);
+        document.getElementById("total-keluar").innerText = formatRupiah(pengeluaran);
+        document.getElementById("total-tabungan").innerText = formatRupiah(tabungan);
+    }
+    // 4. Menambahkan di dalam kodingan script bot
+function kirimDatakeSheets(Kategori, Nominal, Keterangan) {
+  fetch("https://script.google.com/macros/s/AKfycbysAOAJNQW1178ZilILI_6ZwMidBTslRBR9WEVCx9nfrKXA1mliYqlLCNaget4h8JHV2w/exec", {
+    method: 'POST',
+    body: JSON.stringIfy({
+      kategori: Kategori,
+      nominal: Nominal,
+      keterangan: Keterangan
+    })
+  })
+  .then(response => response.json())
+  .then(result => console.log('Data berhasil masuk sheets!', result))
+  .catch(error => console.error('eror saat kirim data:', error));
+}
+
+       </script>
+
+
+
+</body>
+</html>
