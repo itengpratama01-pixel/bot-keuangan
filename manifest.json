@@ -1,16 +1,17 @@
 {
-  "name": "FinBot Keuangan",
   "short_name": "FinBot",
-  "start_url": "bot-keuangan.html",
-  "display": "standalone",
-  "background_color": "#f0f2f5",
-  "theme_color": "#25d366",
-  "orientation": "portrait",
+  "name": "Bot Keuangan",
   "icons": [
     {
-      "src": "https://cdn-icons-png.flaticon.com/512/4712/4712139.png",
+      "src": "https://cdn-icons-png.flaticon.com/512/2910/2910240.png",
+      "type": "image/png",
       "sizes": "512x512",
-      "type": "image/png"
+      "purpose": "any maskable"
     }
-  ]
+  ],
+  "start_url": "/bot-keuangan/index.html",
+  "background_color": "#ffffff",
+  "display": "standalone",
+  "theme_color": "#000000",
+  "orientation": "portrait"
 }
